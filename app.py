@@ -6,6 +6,11 @@ from collections import Counter
 from datetime import datetime
 from typing import Literal
 
+# Kuberns env vars were saved as Zenrows_API / Fetchlayer_API / OpenAI_API; map them to the names the code uses.
+for _name, _alias in (("ZENROWS_API_KEY", "Zenrows_API"), ("FETCHLAYER_TOKEN", "Fetchlayer_API"), ("OPENAI_API_KEY", "OpenAI_API")):
+    if not os.environ.get(_name) and os.environ.get(_alias):
+        os.environ[_name] = os.environ[_alias]
+
 os.environ.setdefault("CREWAI_DISABLE_TELEMETRY", "true")
 os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 
