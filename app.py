@@ -255,7 +255,8 @@ def run_agent(brand, source="All sources", question=None):
                 errors.pop(s, None)
                 break
             except Exception as e:
-                errors[s] = str(e)[:200]
+                # Never return API keys: ZenRows errors include the request URL with apikey=... in it.
+                errors[s] = re.sub(r"(apikey|token|key)=[^&\s'\"]+", r"\1=***", str(e), flags=re.I)[:200]
     seen = set()
     reviews = [r for r in reviews if r["text"] and not (r["text"] in seen or seen.add(r["text"]))]
     if not reviews:
@@ -263,6 +264,20 @@ def run_agent(brand, source="All sources", question=None):
     answer = build_answer((question or f"How do customers feel about {brand}?").strip(), brand, reviews)
     save_reviews(brand, answer["reviews"])
     return {**answer, "errors": errors}
+
+
+@app.after_request
+def allow_ui(resp):
+    # Lets the SignalOne website (a different domain) call /ask from the browser.
+    resp.headers["Access-Control-Allow-Origin"] = os.environ.get("UI_ORIGIN", "https://signalone-ui.vercel.app")
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return resp
+
+
+@app.route("/ask", methods=["OPTIONS"])
+def ask_preflight():
+    return "", 204
 
 
 @app.get("/health")
