@@ -2,6 +2,7 @@ import json
 import os
 import re
 import sqlite3
+import threading
 from collections import Counter
 from datetime import datetime
 from typing import Literal
@@ -267,6 +268,43 @@ def run_agent(brand, source="All sources", question=None):
 @app.get("/health")
 def health():
     return "ok"
+
+
+REFRESH = {"running": False, "started_at": None, "finished_at": None, "results": {}}
+
+
+def refresh_all():
+    REFRESH.update(running=True, started_at=datetime.utcnow().isoformat(), results={})
+    for b in BRANDS:
+        try:
+            out = run_agent(b)
+            REFRESH["results"][b] = {"reviews": len(out["reviews"]), "verified": out["verified"], "errors": out["errors"]}
+        except Exception as e:
+            REFRESH["results"][b] = {"error": str(e)[:200]}
+    REFRESH.update(running=False, finished_at=datetime.utcnow().isoformat())
+
+
+# Google Apps Script can only wait ~60 s for a reply, and a full refresh takes minutes,
+# so /refresh starts the work in the background and returns at once.
+# ponytail: no auth on /refresh, anyone with the URL can trigger a paid run; add a token env var if that matters
+@app.post("/refresh")
+def refresh():
+    if not REFRESH["running"]:
+        threading.Thread(target=refresh_all, daemon=True).start()
+    return jsonify(started=True, **REFRESH)
+
+
+@app.get("/refresh")
+def refresh_status():
+    return jsonify(REFRESH)
+
+
+@app.get("/sheet-rows")
+def sheet_rows():
+    cols = ["brand", "source", "date", "sentiment", "tag", "text", "url", "fetched_at"]
+    with db() as con:
+        rows = [[r[c] for c in cols] for r in con.execute(f"SELECT {', '.join(cols)} FROM reviews ORDER BY brand, date DESC")]
+    return jsonify(columns=cols, rows=rows, updated_at=datetime.utcnow().isoformat())
 
 
 @app.post("/ask")
