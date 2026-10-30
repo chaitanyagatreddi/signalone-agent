@@ -1,7 +1,7 @@
-flask
-gunicorn
-requests
-crewai
-mcp
-uvicorn
-a2wsgi
+a2wsgi==1.10.10
+crewai==1.15.33
+Flask==3.1.3
+gunicorn==26.2.0
+mcp==1.30.0
+requests==2.34.2
+uvicorn==0.54.0
