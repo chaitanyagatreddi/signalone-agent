@@ -1,0 +1,7 @@
+flask
+gunicorn
+requests
+crewai
+mcp
+uvicorn
+a2wsgi
