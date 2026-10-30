@@ -4,7 +4,7 @@ import re
 import sqlite3
 import threading
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Literal
 
 # Kuberns env vars were saved as Zenrows_API / Fetchlayer_API / OpenAI_API; map them to the names the code uses.
@@ -203,6 +203,10 @@ def build_answer(question, brand, reviews):
     labels = score_reviews(brand, reviews)
     by_id = {l.id: l for l in labels if 0 <= l.id < len(reviews)}
     labelled = [{**r, "sentiment": by_id[i].sentiment, "tag": by_id[i].tag} for i, r in enumerate(reviews) if i in by_id]
+    return answer_from_labelled(question, brand, labelled)
+
+
+def answer_from_labelled(question, brand, labelled):
     total = len(labelled) or 1
     counts = Counter(r["sentiment"] for r in labelled)
     negative = [r["tag"] for r in labelled if r["sentiment"] == "negative"]
@@ -241,12 +245,32 @@ def save_reviews(brand, reviews):
         )
 
 
-def run_agent(brand, source="All sources", question=None):
-    "Fetch -> crew -> evidence gate -> save. Shared by /ask and the MCP tool."
+SAVED_MAX_AGE_HOURS = 24  # the daily refresh keeps saved reviews younger than this
+
+
+def saved_reviews(brand, sources):
+    cutoff = (datetime.utcnow() - timedelta(hours=SAVED_MAX_AGE_HOURS)).isoformat()
+    marks = ",".join("?" * len(sources))
+    with db() as con:
+        rows = con.execute(
+            f"SELECT source, date, sentiment, tag, text, url, fetched_at FROM reviews WHERE brand=? AND source IN ({marks}) AND fetched_at >= ? ORDER BY date DESC",
+            [brand, *sources, cutoff]).fetchall()
+    return [dict(r) for r in rows]
+
+
+def run_agent(brand, source="All sources", question=None, fresh=False):
+    """Answer from saved reviews (labelled within the last day) when there are any: only the summary
+    runs, a few seconds. Otherwise fetch -> label -> summary -> save, about a minute (G2 fetch alone ~34 s)."""
     if brand.lower() not in BRANDS:
         raise ValueError(f"Unknown brand. Try one of: {', '.join(b.title() for b in BRANDS)}")
     brand = next(b.title() if b != "bookmyshow" else "BookMyShow" for b in BRANDS if b == brand.lower())
     sources = list(FETCHERS) if source == "All sources" else [source]
+    question = (question or f"How do customers feel about {brand}?").strip()
+    if not fresh:
+        saved = saved_reviews(brand, sources)
+        if saved:
+            return {**answer_from_labelled(question, brand, saved), "errors": {}, "from_saved": True,
+                    "fetched_at": max(r["fetched_at"] for r in saved)}
     reviews, errors = [], {}
     for s in sources:
         for attempt in (1, 2):  # one retry: a source failed once intermittently in testing
@@ -261,9 +285,9 @@ def run_agent(brand, source="All sources", question=None):
     reviews = [r for r in reviews if r["text"] and not (r["text"] in seen or seen.add(r["text"]))]
     if not reviews:
         raise RuntimeError(f"No reviews found. Source errors: {errors}")
-    answer = build_answer((question or f"How do customers feel about {brand}?").strip(), brand, reviews)
+    answer = build_answer(question, brand, reviews)
     save_reviews(brand, answer["reviews"])
-    return {**answer, "errors": errors}
+    return {**answer, "errors": errors, "from_saved": False}
 
 
 @app.after_request
@@ -292,7 +316,7 @@ def refresh_all():
     REFRESH.update(running=True, started_at=datetime.utcnow().isoformat(), results={})
     for b in BRANDS:
         try:
-            out = run_agent(b)
+            out = run_agent(b, fresh=True)
             REFRESH["results"][b] = {"reviews": len(out["reviews"]), "verified": out["verified"], "errors": out["errors"]}
         except Exception as e:
             REFRESH["results"][b] = {"error": str(e)[:200]}
