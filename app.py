@@ -7,7 +7,7 @@ from collections import Counter
 from datetime import datetime, timedelta
 from typing import Literal
 
-# Kuberns env vars were saved as Zenrows_API / Fetchlayer_API / OpenAI_API; map them to the names the code uses.
+# Env-var aliases: some hosting panels save keys under different names.
 for _name, _alias in (("ZENROWS_API_KEY", "Zenrows_API"), ("FETCHLAYER_TOKEN", "Fetchlayer_API"), ("OPENAI_API_KEY", "OpenAI_API")):
     if not os.environ.get(_name) and os.environ.get(_alias):
         os.environ[_name] = os.environ[_alias]
@@ -226,7 +226,7 @@ def answer_from_labelled(question, brand, labelled):
     }
 
 
-# ponytail: SQLite on local disk is wiped on each Kuberns redeploy; move to a hosted DB if history must survive deploys
+# ponytail: SQLite on local disk is wiped on each Render redeploy; the Google Sheet is the permanent record
 DB = os.environ.get("SIGNALONE_DB", os.path.join(os.path.dirname(os.path.abspath(__file__)), "signalone.db"))
 
 

@@ -10,7 +10,7 @@ from collections import Counter
 from contextlib import asynccontextmanager
 
 # Local dev only: load keys from ~/.claude/secrets.zsh when they aren't in the environment.
-# On Kuberns the keys come from its Environment Variables page, and this file doesn't exist.
+# On Render the keys come from its Environment Variables page, and this file doesn't exist.
 _secrets = os.path.expanduser("~/.claude/secrets.zsh")
 if os.path.exists(_secrets):
     for _k, _v in re.findall(r"^export (\w+)=[\"']?([^\"'\n]+)", open(_secrets).read(), re.M):
@@ -24,7 +24,7 @@ from starlette.routing import Mount
 
 from app import BRANDS, app as flask_app, db, run_agent
 
-# host="0.0.0.0" so the server accepts requests addressed to the Kuberns URL, not only localhost.
+# host="0.0.0.0" so the server accepts requests addressed to the Render URL, not only localhost.
 mcp = FastMCP("SignalOne", host="0.0.0.0", streamable_http_path="/", stateless_http=True, json_response=True)
 
 
