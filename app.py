@@ -46,7 +46,7 @@ def fetchlayer(tool, arguments):
             "Accept": "application/json, text/event-stream",
         },
         json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": tool, "arguments": arguments}},
-        timeout=120,
+        timeout=30,
     )
     r.raise_for_status()
     r.encoding = "utf-8"
