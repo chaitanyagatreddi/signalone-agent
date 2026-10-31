@@ -59,16 +59,19 @@ def fetchlayer(tool, arguments):
 
 def fetch_reddit(brand):
     out = fetchlayer("scrape_search", {"query": brand, "limit": MAX_PER_SOURCE, "format": "json"})
-    return [
-        {
+    rows = []
+    for p in out.get("items", [])[:MAX_PER_SOURCE]:
+        blob = f"{p.get('title', '')} {p.get('previewText') or ''}".lower()
+        if brand.lower() not in blob:
+            continue  # skip false matches (e.g. "townsfolk" for "townscript")
+        rows.append({
             "source": "Reddit",
             "date": (p.get("createdAt") or "")[:10],
             "rating": None,
             "text": f"{p.get('title', '')}. {p.get('previewText') or ''}".strip(),
             "url": p.get("permalink"),
-        }
-        for p in out.get("items", [])[:MAX_PER_SOURCE]
-    ]
+        })
+    return rows
 
 
 def fetch_trustpilot(domain):
