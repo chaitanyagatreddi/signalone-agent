@@ -122,7 +122,7 @@ def fetch_g2(slug):
     return reviews[:MAX_PER_SOURCE]
 
 
-FETCHERS = {"Reddit": lambda b: fetch_reddit(b), "Trustpilot": lambda b: fetch_trustpilot(BRANDS[b.lower()][1]), "G2": lambda b: fetch_g2(BRANDS[b.lower()][0])}
+FETCHERS = {"G2": lambda b: fetch_g2(BRANDS[b.lower()][0]), "Reddit": lambda b: fetch_reddit(b), "Trustpilot": lambda b: fetch_trustpilot(BRANDS[b.lower()][1])}
 
 
 class Label(BaseModel):
@@ -276,14 +276,10 @@ def run_agent(brand, source="All sources", question=None, fresh=False):
                     "fetched_at": max(r["fetched_at"] for r in saved)}
     reviews, errors = [], {}
     for s in sources:
-        for attempt in (1, 2):  # one retry: a source failed once intermittently in testing
-            try:
-                reviews += FETCHERS[s](brand)
-                errors.pop(s, None)
-                break
-            except Exception as e:
-                # Never return API keys: ZenRows errors include the request URL with apikey=... in it.
-                errors[s] = re.sub(r"(apikey|token|key)=[^&\s'\"]+", r"\1=***", str(e), flags=re.I)[:200]
+        try:
+            reviews += FETCHERS[s](brand)
+        except Exception as e:
+            errors[s] = re.sub(r"(apikey|token|key)=[^&\s'\"]+", r"\1=***", str(e), flags=re.I)[:200]
     seen = set()
     reviews = [r for r in reviews if r["text"] and not (r["text"] in seen or seen.add(r["text"]))]
     if not reviews:
