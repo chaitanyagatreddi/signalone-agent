@@ -73,6 +73,9 @@ SQLite is wiped on each Render redeploy. The Sheet is the permanent record.
 - **G2**: ZenRows JS-render + premium proxy. If ZenRows is down or credits run out, G2 reviews stop.
 - **Trustpilot and Reddit**: both depend on a third-party fetch service. 30s timeout per call.
 - **Render free tier**: cold starts (~30s), SQLite wiped on deploy, 512 MB RAM.
+- **Rate limits**: OpenAI, ZenRows and the fetch service can each return a rate-limit error or time out. There is no backoff. A source that fails is skipped for that run, not retried.
+- **Auth expiry**: the OpenAI, ZenRows and fetch-service keys are set once in Render. If one expires or is revoked, that source stops. The Apps Script triggers also stop if the Sheet owner's Google authorisation is revoked.
+- **Cost at scale**: every fresh run sends the reviews to gpt-4o-mini twice (label, then summarise), and G2 goes through ZenRows with JS render and a premium proxy, the most expensive call. The daily refresh runs all 4 brands. The saved path (24h) avoids refetching, and there is no cost cap in the code.
 - **Evidence gate**: strict — if the LLM can't produce a fully cited summary in 3 tries, `verified` comes back false.
 - **Wrong sentiment**: The agent could read a positive review as neutral or negative and push it into Slack and Discord.
 - **Cron jobs**: If the agent runs cron jobs on multiple things, it could show sycophancy, or make up data without doing the job.
