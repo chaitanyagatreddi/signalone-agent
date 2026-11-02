@@ -20,7 +20,8 @@ function writeSheet() {
   const sheet = ss.getSheetByName('Reviews') || ss.insertSheet('Reviews');
   const key = (r) => r[0] + '|' + r[1] + '|' + r[5]; // brand | source | text
   const last = sheet.getLastRow();
-  const existing = last > 1 ? sheet.getRange(2, 1, last - 1, n).getValues() : [];
+  // Blank rows (left behind when cells are cleared instead of rows deleted) are dropped, so data always starts at row 2.
+  const existing = last > 1 ? sheet.getRange(2, 1, last - 1, n).getValues().filter((r) => r.some((c) => c !== '')) : [];
   const index = new Map(existing.map((r, i) => [key(r), i]));
   let added = 0, updated = 0;
   data.rows.forEach((r) => {
@@ -28,6 +29,7 @@ function writeSheet() {
     else { index.set(key(r), existing.length); existing.push(r); added++; }
   });
   sheet.getRange(1, 1, 1, n).setValues([data.columns]).setFontWeight('bold');
+  if (last > 1) sheet.getRange(2, 1, last - 1, n).clearContent();
   if (existing.length) sheet.getRange(2, 1, existing.length, n).setValues(existing);
   sheet.getRange(1, n + 2).setValue('updated_at: ' + data.updated_at);
   Logger.log('added ' + added + ', updated ' + updated + ', total ' + existing.length + ' rows');

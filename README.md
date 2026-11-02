@@ -74,6 +74,17 @@ SQLite is wiped on each Render redeploy. The Sheet is the permanent record.
 - **FetchLayer**: Trustpilot and Reddit depend on it. 30s timeout per call.
 - **Render free tier**: cold starts (~30s), SQLite wiped on deploy, 512 MB RAM.
 - **Evidence gate**: strict — if the LLM can't produce a fully cited summary in 3 tries, `verified` comes back false.
+- **Wrong sentiment**: The agent could read a positive review as neutral or negative and push it into Slack and Discord.
+- **Cron jobs**: If the agent runs cron jobs on multiple things, it could show sycophancy, or make up data without doing the job.
+- **No hard stop**: Say we ask it to stop at 1,000 reviews, or on Wednesday. It could just keep going. Hard gates are necessary for this.
+
+## What I'd build next
+
+If I had one more week on SignalOne, I'd build two things.
+
+First, a Telegram agent that sends continuous updates, through whichever channel we choose, like Slack or Discord. To act on them quickly, I'd build an SOP with an intent classifier.
+
+Second, a funnel from the reviews. If we crawl 1,000 reviews a day, labelling them positive or negative isn't enough. I'd work out which ones matter and how we act on them. Then I'd use those reviews to build content, like blogs and other formats, to rank in AEO and SEO, and to run ads.
 
 ## Tests
 
