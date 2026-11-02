@@ -14,8 +14,8 @@ Eventbrite · Ticket Tailor · Townscript · BookMyShow
 Browser UI ──► /ask (Flask) ──► CrewAI scorer + analyst ──► evidence gate ──► response
                                      ▲
                                G2 (ZenRows)
-                               Trustpilot (FetchLayer)
-                               Reddit (FetchLayer)
+                               Trustpilot
+                               Reddit
 
 Google Apps Script (sheet.gs)
   startRefresh  ──► POST /refresh  (background, all 4 brands)
@@ -51,7 +51,7 @@ Environment variables (set in Render dashboard or `~/.claude/secrets.zsh` locall
 |-----|------|
 | `OPENAI_API_KEY` | gpt-4o-mini for CrewAI |
 | `ZENROWS_API_KEY` | G2 scraping |
-| `FETCHLAYER_TOKEN` | Trustpilot + Reddit via FetchLayer MCP |
+| `FETCHLAYER_TOKEN` | Access token for Trustpilot and Reddit |
 | `UI_ORIGIN` | CORS origin for the frontend (default: signalone-ui.vercel.app) |
 
 Run locally:
@@ -71,7 +71,7 @@ SQLite is wiped on each Render redeploy. The Sheet is the permanent record.
 ## Where it breaks
 
 - **G2**: ZenRows JS-render + premium proxy. If ZenRows is down or credits run out, G2 reviews stop.
-- **FetchLayer**: Trustpilot and Reddit depend on it. 30s timeout per call.
+- **Trustpilot and Reddit**: both depend on a third-party fetch service. 30s timeout per call.
 - **Render free tier**: cold starts (~30s), SQLite wiped on deploy, 512 MB RAM.
 - **Evidence gate**: strict — if the LLM can't produce a fully cited summary in 3 tries, `verified` comes back false.
 - **Wrong sentiment**: The agent could read a positive review as neutral or negative and push it into Slack and Discord.
